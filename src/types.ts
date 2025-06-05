@@ -97,7 +97,8 @@ export interface ChangelogOptions extends Partial<ChangelogenOptions> {
 
   /**
    * Files to upload as assets to the release
-   * `--assets path1,path2` or `--assets path1 --assets path2`
+   * Supports glob patterns: `--assets "dist/*.zip" "*.tar.gz"`
+   * Multiple formats: `--assets path1,path2` or `--assets path1 --assets path2`
    */
   assets?: string[] | string
 }

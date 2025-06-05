@@ -12,6 +12,7 @@ Generate changelog for GitHub releases from [Conventional Commits](https://www.c
 - Grouped scope in changelog
 - Create the release note, or update the existing one
 - List contributors
+- Upload release assets with glob pattern support
 
 ## Usage
 
@@ -47,9 +48,50 @@ jobs:
       - run: npx changelogithub # or changelogithub@0.12 to ensure a stable result
         env:
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+
+      # Optional: Upload release assets
+      # - name: Build artifacts
+      #   run: npm run build
+      #
+      # - run: npx changelogithub --assets "dist/*.zip" "dist/*.tar.gz"
+      #   env:
+      #     GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
 ```
 
 It will be trigged whenever you push a tag to GitHub that starts with `v`.
+
+## CLI Options
+
+### Upload Assets
+
+You can upload files as release assets using the `--assets` option, which supports glob patterns:
+
+```bash
+# Upload specific files
+npx changelogithub --assets dist/app.zip,dist/app.tar.gz
+
+# Upload using glob patterns
+npx changelogithub --assets "dist/*.zip" "dist/*.tar.gz"
+
+# Upload all files in a directory
+npx changelogithub --assets "dist/*"
+
+# Multiple patterns
+npx changelogithub --assets "*.zip" "*.tar.gz" "docs/*.pdf"
+```
+
+The assets option supports:
+
+- **Glob patterns**: `*`, `**`, `?`, `[...]`, `{...}`
+- **Multiple files**: Space-separated or comma-separated paths
+- **Mixed usage**: Combine specific files and glob patterns
+
+Examples of supported patterns:
+
+- `dist/*.zip` - All .zip files in dist directory
+- `dist/**/*.js` - All .js files in dist and subdirectories
+- `{dist,build}/*.{zip,tar.gz}` - .zip and .tar.gz files in dist or build directories
+- `app-v?.?.?.zip` - Files matching version pattern like app-v1.2.3.zip
 
 ## Configuration
 

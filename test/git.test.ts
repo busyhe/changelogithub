@@ -100,8 +100,8 @@ it('should match with current github repo', async () => {
   expect(repo).toContain('/changelogithub')
 })
 
-it('should throw error when baseUrl is different from git repository', () => {
-  expect(async () => {
+it('should throw error when baseUrl is different from git repository', async () => {
+  await expect(async () => {
     await getGitHubRepo('custom.git.com')
   }).rejects.toThrow('Can not parse GitHub repo from url')
 })

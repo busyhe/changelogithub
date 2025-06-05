@@ -3,7 +3,8 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 /* eslint-disable no-console */
 import { notNullish } from '@antfu/utils'
-import { cyan, green, red } from 'ansis'
+import { cyan, green, red, yellow } from 'ansis'
+import { glob } from 'fast-glob'
 import { $fetch } from 'ofetch'
 
 export async function sendRelease(
@@ -163,20 +164,57 @@ export async function uploadAssets(options: ChangelogOptions, assets: string | s
     ).filter(Boolean)
   }
 
+  // Expand glob patterns
+  const expandedAssets: string[] = []
+  for (const asset of assetList) {
+    try {
+      // Check if the asset contains glob patterns
+      if (asset.includes('*') || asset.includes('?') || asset.includes('[') || asset.includes('{')) {
+        const matches = await glob(asset, { onlyFiles: true, absolute: false })
+        if (matches.length === 0) {
+          console.log(yellow(`No files found matching pattern: ${asset}`))
+        }
+        else {
+          expandedAssets.push(...matches)
+          console.log(cyan(`Found ${matches.length} file(s) matching pattern: ${asset}`))
+        }
+      }
+      else {
+        // Check if file exists for non-glob patterns
+        try {
+          await fs.access(asset)
+          expandedAssets.push(asset)
+        }
+        catch {
+          console.log(yellow(`File not found: ${asset}`))
+        }
+      }
+    }
+    catch (error) {
+      console.error(red(`Error processing asset pattern "${asset}": ${error}`))
+    }
+  }
+
+  if (expandedAssets.length === 0) {
+    console.log(yellow('No assets to upload.'))
+    return
+  }
+
   // Get the release by tag to obtain the upload_url
   const release = await $fetch(`https://${options.baseUrlApi}/repos/${options.releaseRepo}/releases/tags/${options.to}`, {
     headers,
   })
 
-  for (const asset of assetList) {
+  for (const asset of expandedAssets) {
     const filePath = path.resolve(asset)
-    const fileData = await fs.readFile(filePath)
-    const fileName = path.basename(filePath)
-    const contentType = 'application/octet-stream'
-
-    const uploadUrl = release.upload_url.replace('{?name,label}', `?name=${encodeURIComponent(fileName)}`)
-    console.log(cyan(`Uploading ${fileName}...`))
     try {
+      const fileData = await fs.readFile(filePath)
+      const fileName = path.basename(filePath)
+      const contentType = 'application/octet-stream'
+
+      const uploadUrl = release.upload_url.replace('{?name,label}', `?name=${encodeURIComponent(fileName)}`)
+      console.log(cyan(`Uploading ${fileName}...`))
+
       await $fetch(uploadUrl, {
         method: 'POST',
         headers: {
@@ -188,7 +226,7 @@ export async function uploadAssets(options: ChangelogOptions, assets: string | s
       console.log(green(`Uploaded ${fileName} successfully.`))
     }
     catch (error) {
-      console.error(red(`Failed to upload ${fileName}: ${error}`))
+      console.error(red(`Failed to upload ${asset}: ${error}`))
     }
   }
 }
